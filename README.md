@@ -7,7 +7,6 @@
 Set a reading goal → finish reading to unlock browsing → your cat companion keeps you going!
 
 <p align="center">
-  <img src="screenshots/popup.png" width="280" alt="主界面 Popup">
   <img src="screenshots/blocked.png" width="400" alt="拦截页 Blocked Page">
 </p>
 
@@ -187,5 +186,5 @@ Works on any Chromium-based browser: Edge, Brave, Arc, Vivaldi, etc.
   <br>
   🐾 和猫猫一起坚持阅读 | Read with your cat 🐾
   <br><br>
-  <a href="https://github.com/sanjuroku/reading-cat">⭐ 觉得有用？给个 Star！| Star this repo if you like it!</a>
+  ⭐ 觉得有用？给个 Star！| Star this repo if you like it!
 </p>
