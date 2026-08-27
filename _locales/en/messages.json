@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Reading Cat",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Read with your cat 🐱 Pomodoro-style reading timer — finish reading before browsing",
+    "description": "Extension description"
+  }
+}

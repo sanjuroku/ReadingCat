@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📖 先完成阅读喵～</title>
+  <style>
+    :root {
+      --c-bg:      #fef9f0;
+      --c-surface: #ffffff;
+      --c-border:  #f0e6d6;
+      --c-text:    #3d3328;
+      --c-text2:   #9a8e80;
+      --c-primary: #f5a623;
+      --c-primary2:#e8913a;
+      --c-purple:  #6c5ce7;
+      --c-purple-l:#ede9fe;
+      --c-green:   #10b981;
+      --c-green-l: #d1fae5;
+      --c-warn:    #f59e0b;
+      --c-warn-l:  #fef3c7;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --c-bg:      #171411;
+        --c-surface: #262120;
+        --c-border:  #4d4340;
+        --c-text:    #f2ece4;
+        --c-text2:   #bfb5a8;
+        --c-purple-l:#2a2244;
+        --c-green-l: #1a332a;
+        --c-warn-l:  #3d2e14;
+      }
+    }
+    :root[data-theme="dark"] {
+      --c-bg:      #171411;
+      --c-surface: #262120;
+      --c-border:  #4d4340;
+      --c-text:    #f2ece4;
+      --c-text2:   #bfb5a8;
+      --c-purple-l:#2a2244;
+      --c-green-l: #1a332a;
+      --c-warn-l:  #3d2e14;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      background: var(--c-bg);
+      background-image:
+        radial-gradient(circle at 20% 80%, rgba(108,92,231,.04) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(245,166,35,.06) 0%, transparent 50%);
+      color: var(--c-text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .page {
+      text-align: center;
+      max-width: 440px;
+      width: 100%;
+      padding: 32px 24px 40px;
+    }
+
+    .mascot {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    .mascot img {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .bubble {
+      position: relative;
+      background: var(--c-surface);
+      border: 2px solid var(--c-border);
+      border-radius: 24px;
+      padding: 20px 28px;
+      margin: 12px 0 24px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.04);
+    }
+
+    .bubble::before {
+      content: "";
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      background: var(--c-surface);
+      border-top: 2px solid var(--c-border);
+      border-left: 2px solid var(--c-border);
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    .bubble-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--c-primary2);
+      margin-bottom: 4px;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      margin-bottom: 20px;
+    }
+
+    .status-chip.running {
+      background: var(--c-purple-l);
+      color: var(--c-purple);
+      border: 1.5px solid #c4b5fd;
+    }
+
+    .status-chip.paused {
+      background: var(--c-warn-l);
+      color: #b45309;
+      border: 1.5px solid #fcd68d;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .3; }
+    }
+
+    .timer-card {
+      background: var(--c-surface);
+      border: 2px solid var(--c-border);
+      border-radius: 28px;
+      padding: 28px 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.04);
+    }
+
+    .timer-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--c-text2);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+
+    .timer-display {
+      font-size: 54px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      font-variant-numeric: tabular-nums;
+      color: var(--c-text);
+      line-height: 1;
+    }
+
+    .timer-unit {
+      font-size: 13px;
+      color: var(--c-text2);
+      margin-top: 6px;
+      margin-bottom: 16px;
+    }
+
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 10px;
+      background: var(--c-border);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f5a623, #f7c948);
+      border-radius: 5px;
+      transition: width 1s ease;
+    }
+
+    .progress-pct {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--c-primary2);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    .blocked-url {
+      font-size: 11px;
+      color: var(--c-text2);
+      word-break: break-all;
+      background: var(--c-surface);
+      border: 1.5px solid var(--c-border);
+      padding: 10px 16px;
+      border-radius: 14px;
+      margin-bottom: 20px;
+      line-height: 1.6;
+      text-align: left;
+    }
+
+    .blocked-url-label {
+      font-weight: 700;
+      color: var(--c-primary2);
+    }
+
+    .tips {
+      text-align: left;
+      background: var(--c-surface);
+      border: 2px solid var(--c-border);
+      border-radius: 20px;
+      padding: 18px 22px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.03);
+    }
+
+    .tips h3 {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--c-primary2);
+    }
+
+    .tips ul { list-style: none; }
+
+    .tips li {
+      font-size: 12px;
+      color: var(--c-text2);
+      padding: 3px 0;
+      line-height: 1.7;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .tips li::before {
+      content: "🐾";
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    /* ---- 统计 + 历史 ---- */
+
+    .stats-section {
+      text-align: left;
+      margin-top: 24px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--c-primary2);
+      margin-bottom: 10px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-card {
+      background: var(--c-surface);
+      border: 1.5px solid var(--c-border);
+      border-radius: 14px;
+      padding: 14px 12px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--c-primary2);
+      line-height: 1.2;
+    }
+    .stat-value small {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--c-text2);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .history-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 8px;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--c-border);
+      font-size: 12px;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-date { color: var(--c-text2); }
+    .history-dur { font-weight: 600; color: var(--c-text); }
+    .history-tag {
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .history-tag.done { background: #d1fae5; color: #047857; }
+    .history-tag.partial { background: #fef3c7; color: #b45309; }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .history-tag.done { background: #1a332a; color: #5ee9b5; }
+      :root:not([data-theme="light"]) .history-tag.partial { background: #3d2e14; color: #fcd27e; }
+    }
+    :root[data-theme="dark"] .history-tag.done { background: #1a332a; color: #5ee9b5; }
+    :root[data-theme="dark"] .history-tag.partial { background: #3d2e14; color: #fcd27e; }
+
+    .history-empty {
+      font-size: 12px; color: var(--c-text2); text-align: center;
+      padding: 16px 0; font-style: italic;
+    }
+
+    .btn-clear {
+      background: none; border: none;
+      color: #ef4444;
+      font-size: 12px; cursor: pointer;
+      opacity: .6; transition: .15s;
+      font-family: inherit;
+    }
+    .btn-clear:hover { opacity: 1; }
+
+    .footer-deco {
+      margin-top: 28px;
+      font-size: 12px;
+      color: var(--c-text2);
+      opacity: .6;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <div class="mascot">
+      <img src="icons/cat.gif" alt="阅读猫猫">
+    </div>
+
+    <div class="bubble">
+      <div class="bubble-title" data-i18n="先去阅读喵～ 📖">先去阅读喵～ 📖</div>
+    </div>
+
+    <div id="statusChip" class="status-chip running">
+      <span class="status-dot"></span>
+      <span data-i18n="阅读中">阅读中</span>
+    </div>
+
+    <div class="timer-card">
+      <div class="timer-label" data-i18n="距离解锁还需">距离解锁还需</div>
+      <div class="timer-display" id="timerBig">--:--</div>
+      <div class="timer-unit" data-i18n="分 : 秒">分 : 秒</div>
+      <div class="progress-wrap">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressBar" style="width:0%"></div>
+        </div>
+        <div class="progress-pct" id="progressPct">0%</div>
+      </div>
+    </div>
+
+    <div class="blocked-url" id="blockedUrl"></div>
+
+    <div class="tips">
+      <h3 data-i18n="🐱 小提示">🐱 小提示</h3>
+      <ul>
+        <li data-i18n="切换到阅读网站标签页，计时器自动开始">切换到阅读网站标签页，计时器自动开始</li>
+        <li data-i18n="目标达成后这个页面会自动跳转">目标达成后这个页面会自动跳转</li>
+        <li data-i18n="点击扩展图标可以调整剩余时间">点击扩展图标可以调整剩余时间</li>
+      </ul>
+    </div>
+
+    <!-- 统计 + 历史 -->
+    <div class="stats-section">
+      <h3 class="section-title" data-i18n="本周统计">本周统计</h3>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-value" id="pgStatTotal">0 min</div>
+          <div class="stat-label" data-i18n="总阅读">总阅读</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="pgStatSessions">0 <small data-i18n="次">次</small></div>
+          <div class="stat-label" data-i18n="完成">完成</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="pgStatAvg">0 min</div>
+          <div class="stat-label" data-i18n="平均">平均</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="pgStatStreak">0 <small data-i18n="天">天</small></div>
+          <div class="stat-label" data-i18n="连续">连续</div>
+        </div>
+      </div>
+
+      <h3 class="section-title" data-i18n="阅读记录" style="margin-top:16px">阅读记录</h3>
+      <div class="history-list" id="historyList"></div>
+      <button class="btn-clear" id="pgClearHistoryBtn" data-i18n="清除记录">清除记录</button>
+    </div>
+
+    <div class="footer-deco" data-i18n="🐾 读书喵 · 和猫猫一起坚持阅读">🐾 读书喵 · 和猫猫一起坚持阅读</div>
+
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="stats.js"></script>
+  <script src="blocked.js"></script>
+</body>
+</html>

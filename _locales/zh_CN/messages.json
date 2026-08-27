@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "读书喵",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "和猫猫一起读书 🐱 番茄钟式阅读计时器，读满时间才能自由上网",
+    "description": "Extension description"
+  }
+}
