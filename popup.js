@@ -98,31 +98,7 @@ function injectGradients() {
   svg.insertBefore(defs, svg.firstChild);
 }
 
-// ------ 安全工具 ------
-
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
-
-// ------ 格式化 ------
-
-function fmtTime(totalSec) {
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function fmtDate(ts) {
-  if (!ts) return '';
-  const d = new Date(ts);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${mm}-${dd} ${hh}:${mi}`;
-}
+// fmtTime, fmtDate, esc, calcStats 来自 utils.js
 
 // ------ 渲染：只更新计时器/圆环/按钮状态 ------
 
@@ -200,68 +176,13 @@ function renderPresets(presets, active) {
 
 // ------ 统计面板 ------
 
+// 使用 utils.js 中的 calcStats（修复 M5 DRY + M4 DST）
 function renderStats(history) {
-  if (!history || history.length === 0) {
-    $('statTotal').textContent = '0 min';
-    $('statSessions').innerHTML = `0 <small>${t('次')}</small>`;
-    $('statAvg').textContent = '0 min';
-    $('statStreak').innerHTML = `0 <small>${t('天')}</small>`;
-    return;
-  }
-
-  // 本周起始（周一）
-  const now = new Date();
-  const dayOfWeek = now.getDay() || 7; // 周日=7
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - dayOfWeek + 1);
-  weekStart.setHours(0, 0, 0, 0);
-  const weekStartTs = weekStart.getTime();
-
-  // 本周数据
-  const weekItems = history.filter(h => h.startedAt >= weekStartTs);
-  const completedThisWeek = weekItems.filter(h => h.elapsedSeconds >= h.targetSeconds);
-  const totalMinutes = Math.round(weekItems.reduce((sum, h) => sum + h.elapsedSeconds, 0) / 60);
-
-  // 显示时长
-  let totalDisplay;
-  if (totalMinutes >= 60) {
-    const hrs = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    totalDisplay = mins > 0 ? `${hrs}h${mins}m` : `${hrs}h`;
-  } else {
-    totalDisplay = `${totalMinutes} min`;
-  }
-
-  // 平均每次
-  const avgMin = completedThisWeek.length > 0
-    ? Math.round(completedThisWeek.reduce((s, h) => s + h.elapsedSeconds, 0) / completedThisWeek.length / 60)
-    : 0;
-
-  // 连续天数（从今天往回数）
-  let streak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let d = 0; d < 365; d++) {
-    const checkDate = new Date(today);
-    checkDate.setDate(today.getDate() - d);
-    const dayStart = checkDate.getTime();
-    const dayEnd = dayStart + 86400000;
-    const hasCompleted = history.some(h =>
-      h.startedAt >= dayStart && h.startedAt < dayEnd && h.elapsedSeconds >= h.targetSeconds
-    );
-    if (hasCompleted) {
-      streak++;
-    } else if (d > 0) {
-      // 今天还没完成不算断，但昨天没完成就断了
-      break;
-    }
-  }
-
-  $('statTotal').textContent = totalDisplay;
-  $('statSessions').innerHTML = `${completedThisWeek.length} <small>${t('次')}</small>`;
-  $('statAvg').textContent = `${avgMin} min`;
-  $('statStreak').innerHTML = `${streak} <small>${t('天')}</small>`;
+  const s = calcStats(history);
+  $('statTotal').textContent = s.totalDisplay;
+  $('statSessions').innerHTML = `${s.completedCount} <small>${t('次')}</small>`;
+  $('statAvg').textContent = `${s.avgMin} min`;
+  $('statStreak').innerHTML = `${s.streak} <small>${t('天')}</small>`;
 }
 
 // ------ 设置面板渲染 ------
@@ -360,7 +281,7 @@ function initFromStorage() {
 // ------ 定时刷新 ------
 
 function refreshTimer() {
-  if (!initialized) return;
+  if (!initialized || settingsOpen) return;  // M3: 设置面板打开时不刷新
 
   chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
     if (!res) return;
@@ -496,15 +417,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 保存设置
+  // 保存设置（修复 H3：只发用户改了的字段，由 background 合并）
   $('saveBtn').addEventListener('click', () => {
     chrome.runtime.sendMessage({
       type: 'SAVE_SETTINGS',
       settings: {
         readingSites: [...currentSites],
-        presetMinutes: [15, 25, 30, 45, 60, 90],
-        lastUsedMinutes: selectedMinutes,
-        allowedSites: ['chrome://', 'chrome-extension://', 'edge://', 'about:', 'moz-extension://']
+        lastUsedMinutes: selectedMinutes
       }
     }, () => {
       settingsOpen = false;
