@@ -23,8 +23,13 @@ const DEFAULT_SETTINGS = {
   ]
 };
 
-// 历史记录
-// history: [ { startedAt, completedAt, targetSeconds, elapsedSeconds } ]
+// ------ 内存单例（修复 C1 竞态） ------
+// 所有操作直接在内存中执行，避免并发 read-modify-write
+// 状态变更后异步持久化到 storage
+
+let _session = null;
+let _settings = null;
+let _tickBusy = false;  // 防止 tick 重入
 
 // ------ 工具函数 ------
 
@@ -48,18 +53,22 @@ function isAllowedSite(url, allowedSites) {
 
 // ------ 存储 ------
 
-async function getSettings() {
-  const r = await chrome.storage.local.get('settings');
-  return { ...DEFAULT_SETTINGS, ...(r.settings || {}) };
+async function loadState() {
+  const r = await chrome.storage.local.get(['session', 'settings']);
+  _session = { ...DEFAULT_SESSION, ...(r.session || {}) };
+  _settings = { ...DEFAULT_SETTINGS, ...(r.settings || {}) };
 }
 
-async function getSession() {
-  const r = await chrome.storage.local.get('session');
-  return { ...DEFAULT_SESSION, ...(r.session || {}) };
+async function persistSession() {
+  if (_session) await chrome.storage.local.set({ session: { ..._session } });
 }
 
-async function saveSession(session) {
-  await chrome.storage.local.set({ session });
+async function persistSettings() {
+  if (_settings) await chrome.storage.local.set({ settings: { ..._settings } });
+}
+
+async function ensureLoaded() {
+  if (!_session || !_settings) await loadState();
 }
 
 async function getHistory() {
@@ -74,75 +83,94 @@ async function saveHistory(history) {
 // ------ 计时核心 ------
 
 async function tick() {
-  const session = await getSession();
-  if (session.status !== 'running') return;
+  // 防止重入（修复 C1：tick + 消息处理并发写）
+  if (_tickBusy) return;
+  _tickBusy = true;
 
-  const settings = await getSettings();
-  const now = Date.now();
+  try {
+    await ensureLoaded();
+    if (_session.status !== 'running') return;
 
-  if (settings.readingSites.length === 0) {
-    // 离线阅读模式：时间自动累计（不需要在阅读网站上）
-    if (session.lastTick > 0) {
-      const deltaMs = now - session.lastTick;
-      session.elapsedMs = (session.elapsedMs || 0) + Math.min(deltaMs, 5000);
-      session.elapsedSeconds = Math.floor(session.elapsedMs / 1000);
-    }
-  } else {
-    // 在线阅读模式：只在阅读网站上累加
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-      if (tab && tab.url && isReadingSite(tab.url, settings.readingSites)) {
-        if (session.lastTick > 0) {
-          const deltaMs = now - session.lastTick;
-          session.elapsedMs = (session.elapsedMs || 0) + Math.min(deltaMs, 5000);
-          session.elapsedSeconds = Math.floor(session.elapsedMs / 1000);
-        }
+    const now = Date.now();
+
+    if (_settings.readingSites.length === 0) {
+      // 离线阅读模式：时间自动累计
+      if (_session.lastTick > 0) {
+        const deltaMs = now - _session.lastTick;
+        _session.elapsedMs = (_session.elapsedMs || 0) + Math.min(deltaMs, 5000);
+        _session.elapsedSeconds = Math.floor(_session.elapsedMs / 1000);
       }
-    } catch { /* ignore */ }
+    } else {
+      // 在线阅读模式：任意窗口有阅读网站即计时（修复 H2）
+      try {
+        const tabs = await chrome.tabs.query({ active: true });
+        const onReadingSite = tabs.some(tab =>
+          tab.url && isReadingSite(tab.url, _settings.readingSites)
+        );
+        if (onReadingSite && _session.lastTick > 0) {
+          const deltaMs = now - _session.lastTick;
+          _session.elapsedMs = (_session.elapsedMs || 0) + Math.min(deltaMs, 5000);
+          _session.elapsedSeconds = Math.floor(_session.elapsedMs / 1000);
+        }
+      } catch { /* ignore */ }
+    }
+
+    _session.lastTick = now;
+
+    // 检查是否完成
+    if (_session.elapsedSeconds >= _session.targetSeconds) {
+      _session.status = 'completed';
+      _session.completedAt = now;
+      _session.elapsedSeconds = _session.targetSeconds; // 封顶
+
+      // 存入历史
+      const history = await getHistory();
+      history.push({
+        startedAt: _session.startedAt,
+        completedAt: _session.completedAt,
+        targetSeconds: _session.targetSeconds,
+        elapsedSeconds: _session.elapsedSeconds
+      });
+      if (history.length > 50) history.splice(0, history.length - 50);
+      await saveHistory(history);
+
+      // 更新图标徽章
+      chrome.action.setBadgeText({ text: '✓' });
+      chrome.action.setBadgeBackgroundColor({ color: '#059669' });
+
+      // 发送系统通知（根据语言设置）
+      const targetMin = Math.round(_session.targetSeconds / 60);
+      const notifId = 'session-complete-' + Date.now();
+      try {
+        const langData = await chrome.storage.local.get('lang');
+        const lang = langData.lang || 'auto';
+        const isZH = lang === 'zh' || (lang === 'auto' && chrome.i18n.getUILanguage().startsWith('zh'));
+
+        chrome.notifications.create(notifId, {
+          type: 'basic',
+          iconUrl: 'icons/icon128.png',
+          title: isZH ? '🎉 读书喵：阅读完成！' : '🎉 Reading Cat: Complete!',
+          message: isZH
+            ? `太棒了！你完成了 ${targetMin} 分钟的阅读目标，现在可以自由浏览了～`
+            : `Great job! You completed your ${targetMin}-minute reading goal. Free to browse now!`,
+          priority: 2
+        });
+      } catch (e) { console.warn('通知发送失败:', e); }
+    }
+
+    await persistSession();
+  } finally {
+    _tickBusy = false;
   }
-
-  session.lastTick = now;
-
-  // 检查是否完成
-  if (session.elapsedSeconds >= session.targetSeconds) {
-    session.status = 'completed';
-    session.completedAt = now;
-    session.elapsedSeconds = session.targetSeconds; // 封顶
-
-    // 存入历史
-    const history = await getHistory();
-    history.push({
-      startedAt: session.startedAt,
-      completedAt: session.completedAt,
-      targetSeconds: session.targetSeconds,
-      elapsedSeconds: session.elapsedSeconds
-    });
-    // 只保留最近 50 条
-    if (history.length > 50) history.splice(0, history.length - 50);
-    await saveHistory(history);
-
-    // 更新图标徽章
-    chrome.action.setBadgeText({ text: '✓' });
-    chrome.action.setBadgeBackgroundColor({ color: '#059669' });
-
-    // 发送系统通知
-    const targetMin = Math.round(session.targetSeconds / 60);
-    chrome.notifications.create('session-complete', {
-      type: 'basic',
-      iconUrl: 'icons/icon128.png',
-      title: '🎉 读书喵：阅读完成！',
-      message: `太棒了！你完成了 ${targetMin} 分钟的阅读目标，现在可以自由浏览了～`,
-      priority: 2
-    });
-  }
-
-  await saveSession(session);
 }
 
-// 每秒 tick
+// 每秒 tick（worker 存活期间提供秒级精度）
 setInterval(tick, 1000);
 
-// alarm 后备（service worker 休眠保护）
+// alarm 后备（M1：service worker 休眠保护）
+// MV3 的 service worker 空闲 ~30 秒后可能被回收。
+// alarm 每 30 秒唤醒 worker，顶层 setInterval 在重新执行时恢复。
+// lastTick 差值补偿保证即使 30 秒没 tick 也不丢时间。
 chrome.alarms.create('session-tick', { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'session-tick') tick();
@@ -153,34 +181,29 @@ chrome.alarms.onAlarm.addListener(alarm => {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'loading' || !tab.url) return;
 
-  const session = await getSession();
-  // 只在 running 或 paused 状态才拦截
-  if (session.status !== 'running' && session.status !== 'paused') return;
+  await ensureLoaded();
+  if (_session.status !== 'running' && _session.status !== 'paused') return;
 
-  const settings = await getSettings();
   const url = tab.url;
+  if (isAllowedSite(url, _settings.allowedSites)) return;
 
-  if (isAllowedSite(url, settings.allowedSites)) return;
-
-  if (settings.readingSites.length === 0) {
+  if (_settings.readingSites.length === 0) {
     // 离线阅读模式：只允许 timer.html，其他全部屏蔽
     if (url.includes(chrome.runtime.getURL('timer.html'))) return;
     if (url.includes(chrome.runtime.getURL('blocked.html'))) return;
-
-    // 重定向到计时器页面
     chrome.tabs.update(tabId, { url: chrome.runtime.getURL('timer.html') });
   } else {
     // 在线阅读模式：允许阅读网站，屏蔽其他
-    if (isReadingSite(url, settings.readingSites)) return;
+    if (isReadingSite(url, _settings.readingSites)) return;
     if (url.includes(chrome.runtime.getURL('blocked.html'))) return;
 
-    const remaining = Math.max(0, session.targetSeconds - session.elapsedSeconds);
+    const remaining = Math.max(0, _session.targetSeconds - _session.elapsedSeconds);
     const remainMin = Math.ceil(remaining / 60);
-    const targetMin = Math.ceil(session.targetSeconds / 60);
+    const targetMin = Math.ceil(_session.targetSeconds / 60);
 
     const blockedUrl = chrome.runtime.getURL('blocked.html') +
-      `?remaining=${remainMin}&target=${targetMin}&elapsed=${session.elapsedSeconds}` +
-      `&url=${encodeURIComponent(url)}&status=${session.status}`;
+      `?remaining=${remainMin}&target=${targetMin}&elapsed=${_session.elapsedSeconds}` +
+      `&url=${encodeURIComponent(url)}&status=${_session.status}`;
 
     chrome.tabs.update(tabId, { url: blockedUrl });
   }
@@ -192,22 +215,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'GET_STATUS') {
     (async () => {
-      const settings = await getSettings();
-      const session = await getSession();
+      await ensureLoaded();
       const history = await getHistory();
-      const remaining = Math.max(0, session.targetSeconds - session.elapsedSeconds);
-      const progress = session.targetSeconds > 0
-        ? Math.min(100, Math.round((session.elapsedSeconds / session.targetSeconds) * 100))
+      const remaining = Math.max(0, _session.targetSeconds - _session.elapsedSeconds);
+      const progress = _session.targetSeconds > 0
+        ? Math.min(100, Math.round((_session.elapsedSeconds / _session.targetSeconds) * 100))
         : 0;
-
-      sendResponse({ settings, session, history, remaining, progress });
+      sendResponse({
+        settings: { ..._settings },
+        session: { ..._session },
+        history,
+        remaining,
+        progress
+      });
     })();
     return true;
   }
 
   if (msg.type === 'SAVE_SETTINGS') {
     (async () => {
-      await chrome.storage.local.set({ settings: msg.settings });
+      // 合并而非覆盖（修复 H3）
+      await ensureLoaded();
+      _settings = { ..._settings, ...msg.settings };
+      await persistSettings();
       sendResponse({ ok: true });
     })();
     return true;
@@ -215,8 +245,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'START_SESSION') {
     (async () => {
+      await ensureLoaded();
       const targetSeconds = (msg.minutes || 25) * 60;
-      const session = {
+      _session = {
         status: 'running',
         targetSeconds,
         elapsedMs: 0,
@@ -225,21 +256,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         startedAt: Date.now(),
         completedAt: 0
       };
-      await saveSession(session);
+      await persistSession();
 
       // 保存上次使用的时间
-      const settings = await getSettings();
-      settings.lastUsedMinutes = msg.minutes || 25;
-      await chrome.storage.local.set({ settings });
+      _settings.lastUsedMinutes = msg.minutes || 25;
+      await persistSettings();
 
       // 徽章
       chrome.action.setBadgeText({ text: '▶' });
       chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
 
       // 离线阅读模式：自动打开计时器页面
-      if (settings.readingSites.length === 0) {
+      if (_settings.readingSites.length === 0) {
         const timerUrl = chrome.runtime.getURL('timer.html');
-        // 检查是否已有 timer 页面打开
         const tabs = await chrome.tabs.query({});
         const existing = tabs.find(t => t.url && t.url.includes(timerUrl));
         if (existing) {
@@ -256,11 +285,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'PAUSE_SESSION') {
     (async () => {
-      const session = await getSession();
-      if (session.status === 'running') {
-        session.status = 'paused';
-        session.lastTick = 0;
-        await saveSession(session);
+      await ensureLoaded();
+      if (_session.status === 'running') {
+        _session.status = 'paused';
+        _session.lastTick = 0;
+        await persistSession();
         chrome.action.setBadgeText({ text: '⏸' });
         chrome.action.setBadgeBackgroundColor({ color: '#d97706' });
       }
@@ -271,11 +300,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'RESUME_SESSION') {
     (async () => {
-      const session = await getSession();
-      if (session.status === 'paused') {
-        session.status = 'running';
-        session.lastTick = Date.now();
-        await saveSession(session);
+      await ensureLoaded();
+      if (_session.status === 'paused') {
+        _session.status = 'running';
+        _session.lastTick = Date.now();
+        await persistSession();
         chrome.action.setBadgeText({ text: '▶' });
         chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
       }
@@ -286,20 +315,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'STOP_SESSION') {
     (async () => {
-      const session = await getSession();
+      await ensureLoaded();
       // 如果有进度，存入历史
-      if (session.elapsedSeconds > 0) {
+      if (_session.elapsedSeconds > 0) {
         const history = await getHistory();
         history.push({
-          startedAt: session.startedAt,
+          startedAt: _session.startedAt,
           completedAt: Date.now(),
-          targetSeconds: session.targetSeconds,
-          elapsedSeconds: session.elapsedSeconds
+          targetSeconds: _session.targetSeconds,
+          elapsedSeconds: _session.elapsedSeconds
         });
         if (history.length > 50) history.splice(0, history.length - 50);
         await saveHistory(history);
       }
-      await saveSession({ ...DEFAULT_SESSION });
+      _session = { ...DEFAULT_SESSION };
+      await persistSession();
       chrome.action.setBadgeText({ text: '' });
       sendResponse({ ok: true });
     })();
@@ -307,9 +337,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === 'FINISH_SESSION') {
-    // 完成后回到 idle（清除 completed 状态）
     (async () => {
-      await saveSession({ ...DEFAULT_SESSION });
+      await ensureLoaded();
+      _session = { ...DEFAULT_SESSION };
+      await persistSession();
       chrome.action.setBadgeText({ text: '' });
       sendResponse({ ok: true });
     })();
@@ -318,10 +349,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'UPDATE_TARGET') {
     (async () => {
-      const session = await getSession();
-      if (session.status === 'running' || session.status === 'paused') {
-        session.targetSeconds = (msg.minutes || 25) * 60;
-        await saveSession(session);
+      await ensureLoaded();
+      if (_session.status === 'running' || _session.status === 'paused') {
+        _session.targetSeconds = (msg.minutes || 25) * 60;
+        await persistSession();
       }
       sendResponse({ ok: true });
     })();
@@ -337,16 +368,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-// 初始化徽章
+// 初始化
 (async () => {
-  const session = await getSession();
-  if (session.status === 'running') {
+  await loadState();
+  if (_session.status === 'running') {
     chrome.action.setBadgeText({ text: '▶' });
     chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' });
-  } else if (session.status === 'paused') {
+  } else if (_session.status === 'paused') {
     chrome.action.setBadgeText({ text: '⏸' });
     chrome.action.setBadgeBackgroundColor({ color: '#d97706' });
-  } else if (session.status === 'completed') {
+  } else if (_session.status === 'completed') {
     chrome.action.setBadgeText({ text: '✓' });
     chrome.action.setBadgeBackgroundColor({ color: '#059669' });
   }

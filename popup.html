@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>读书喵</title>
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -127,10 +128,10 @@
 
         <div class="setting-subtitle" data-i18n="快捷添加">快捷添加</div>
         <div class="quick-grid" id="quickGrid">
-          <button class="chip" data-site="weread.qq.com">📖 微信读书</button>
-          <button class="chip" data-site="read.douban.com">📗 豆瓣阅读</button>
-          <button class="chip" data-site="book.douban.com">📘 豆瓣读书</button>
-          <button class="chip" data-site="reading.zhihu.com">📕 知乎阅读</button>
+          <button class="chip" data-site="weread.qq.com" data-i18n="📖 微信读书">📖 微信读书</button>
+          <button class="chip" data-site="read.douban.com" data-i18n="📗 豆瓣阅读">📗 豆瓣阅读</button>
+          <button class="chip" data-site="book.douban.com" data-i18n="📘 豆瓣读书">📘 豆瓣读书</button>
+          <button class="chip" data-site="reading.zhihu.com" data-i18n="📕 知乎阅读">📕 知乎阅读</button>
           <button class="chip" data-site="kindle.amazon.com">📙 Kindle</button>
         </div>
         <button class="btn-save" id="saveBtn" data-i18n="保存设置" style="margin-top:14px">保存设置</button>
@@ -174,6 +175,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="i18n.js"></script>
+  <script src="utils.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -40,6 +40,12 @@ const _EN = {
   '自定义': 'Custom',
   '分钟': 'min',
 
+  // -- 快捷添加按钮（L1 fix） --
+  '📖 微信读书': '📖 WeRead',
+  '📗 豆瓣阅读': '📗 Douban Read',
+  '📘 豆瓣读书': '📘 Douban Books',
+  '📕 知乎阅读': '📕 Zhihu Read',
+
   // -- 设置面板 --
   '阅读网站': 'Reading Sites',
   '只有在这些网站上花的时间才算阅读时间': 'Only time on these sites counts as reading',

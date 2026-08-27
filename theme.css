@@ -1,0 +1,56 @@
+/* ============================================================
+   读书喵 — 共享主题变量
+   供 popup.css / blocked.html / timer.html 引用
+   ============================================================ */
+
+:root {
+  --c-bg:        #fef9f0;
+  --c-surface:   #ffffff;
+  --c-surface2:  #fdf3e4;
+  --c-border:    #f0e6d6;
+  --c-text:      #3d3328;
+  --c-text2:     #9a8e80;
+  --c-primary:   #f5a623;
+  --c-primary2:  #e8913a;
+  --c-primary-g: linear-gradient(135deg, #f5a623 0%, #f7c948 100%);
+  --c-success:   #10b981;
+  --c-success-g: linear-gradient(135deg, #059669 0%, #34d399 100%);
+  --c-warn:      #f59e0b;
+  --c-warn-l:    #fef3c7;
+  --c-danger:    #ef4444;
+  --c-ring-bg:   #f0ead8;
+  --c-purple:    #6c5ce7;
+  --c-purple-l:  #ede9fe;
+  --c-green:     #10b981;
+  --c-green-l:   #d1fae5;
+}
+
+/* ---- 深色模式 ---- */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-bg:        #171411;
+    --c-surface:   #262120;
+    --c-surface2:  #302a27;
+    --c-border:    #4d4340;
+    --c-text:      #f2ece4;
+    --c-text2:     #bfb5a8;
+    --c-ring-bg:   #3a3230;
+    --c-purple-l:  #2a2244;
+    --c-green-l:   #1a332a;
+    --c-warn-l:    #3d2e14;
+  }
+}
+
+:root[data-theme="dark"] {
+  --c-bg:        #171411;
+  --c-surface:   #262120;
+  --c-surface2:  #302a27;
+  --c-border:    #4d4340;
+  --c-text:      #f2ece4;
+  --c-text2:     #bfb5a8;
+  --c-ring-bg:   #3a3230;
+  --c-purple-l:  #2a2244;
+  --c-green-l:   #1a332a;
+  --c-warn-l:    #3d2e14;
+}

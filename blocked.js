@@ -13,15 +13,19 @@ chrome.storage.local.get(['theme', 'lang'], (r) => {
 });
 
 const params = new URLSearchParams(window.location.search);
-const blockedUrl = params.get('url') || '';
+const blockedUrl = params.get('url') || '';  // URLSearchParams 已自动解码
 const status = params.get('status') || 'running';
 const initialRemaining = parseInt(params.get('remaining')) || 0;
 const targetMin = parseInt(params.get('target')) || 25;
 
-// 初始显示：URL
+// 初始显示：URL（修复 C2：用 textContent 防 XSS）
 const urlEl = document.getElementById('blockedUrl');
-urlEl.innerHTML = `<span class="blocked-url-label">${t('被拦截：')}</span>` +
-  (blockedUrl ? decodeURIComponent(blockedUrl) : t('未知页面'));
+const urlLabel = document.createElement('span');
+urlLabel.className = 'blocked-url-label';
+urlLabel.textContent = t('被拦截：');
+urlEl.textContent = '';
+urlEl.appendChild(urlLabel);
+urlEl.appendChild(document.createTextNode(blockedUrl || t('未知页面')));
 
 // 初始显示：用 URL 参数先填一次时间
 const initMin = Math.floor(initialRemaining);
@@ -54,13 +58,9 @@ function updateStatus() {
 
     const { session, remaining } = res;
 
-    // 已完成或 idle → 跳转
+    // 已完成或 idle → 跳转（修复 M2：不再双重 decode）
     if (session.status === 'completed' || session.status === 'idle') {
-      if (blockedUrl) {
-        window.location.href = decodeURIComponent(blockedUrl);
-      } else {
-        window.location.href = 'about:blank';
-      }
+      window.location.href = blockedUrl || 'about:blank';
       return;
     }
 
@@ -89,3 +89,18 @@ function updateStatus() {
 
 updateStatus();
 setInterval(updateStatus, 1000);
+
+// 实时监听主题 + 语言变更
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.theme) {
+    const theme = changes.theme.newValue || 'auto';
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+  }
+  if (changes.lang) {
+    if (typeof setLang === 'function') setLang(changes.lang.newValue || 'auto');
+    if (typeof reTranslatePage === 'function') reTranslatePage();
+  }
+});

@@ -4,42 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>📖 读书喵 · 专注阅读中</title>
+  <link rel="stylesheet" href="theme.css">
   <style>
-    :root {
-      --c-bg:      #fef9f0;
-      --c-surface: #ffffff;
-      --c-border:  #f0e6d6;
-      --c-text:    #3d3328;
-      --c-text2:   #9a8e80;
-      --c-primary: #f5a623;
-      --c-primary2:#e8913a;
-      --c-purple:  #6c5ce7;
-      --c-purple-l:#ede9fe;
-      --c-green:   #10b981;
-      --c-green-l: #d1fae5;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) {
-        --c-bg:      #171411;
-        --c-surface: #262120;
-        --c-border:  #4d4340;
-        --c-text:    #f2ece4;
-        --c-text2:   #bfb5a8;
-        --c-purple-l:#2a2244;
-        --c-green-l: #1a332a;
-      }
-    }
-    :root[data-theme="dark"] {
-      --c-bg:      #171411;
-      --c-surface: #262120;
-      --c-border:  #4d4340;
-      --c-text:    #f2ece4;
-      --c-text2:   #bfb5a8;
-      --c-purple-l:#2a2244;
-      --c-green-l: #1a332a;
-    }
-
+    /* 主题色变量由 theme.css 提供 */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
@@ -58,7 +25,7 @@
 
     .page {
       text-align: center;
-      max-width: 460px;
+      max-width: 680px;
       width: 100%;
       padding: 32px 24px 40px;
     }
@@ -311,11 +278,19 @@
 
     .done-msg.hidden { display: none; }
 
-    /* ---- 统计 + 历史 ---- */
+    /* ---- 统计 + 历史（并排布局） ---- */
 
     .stats-section {
       text-align: left;
       margin-top: 24px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .stats-col {
+      flex: 1;
+      min-width: 0;
     }
 
     .section-title {
@@ -455,34 +430,37 @@
     </div>
 
     <div class="done-msg hidden" id="doneMsg">
-      <p>🎉 阅读目标达成！<br>现在可以自由浏览啦～</p>
+      <p id="doneMsgText">🎉 阅读目标达成！<br>现在可以自由浏览啦～</p>
     </div>
 
-    <!-- 统计 + 历史 -->
+    <!-- 统计 + 历史（并排） -->
     <div class="stats-section">
-      <h3 class="section-title" data-i18n="本周统计">本周统计</h3>
-      <div class="stats-grid" id="statsGrid">
-        <div class="stat-card">
-          <div class="stat-value" id="pgStatTotal">0 min</div>
-          <div class="stat-label" data-i18n="总阅读">总阅读</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="pgStatSessions">0 <small data-i18n="次">次</small></div>
-          <div class="stat-label" data-i18n="完成">完成</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="pgStatAvg">0 min</div>
-          <div class="stat-label" data-i18n="平均">平均</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="pgStatStreak">0 <small data-i18n="天">天</small></div>
-          <div class="stat-label" data-i18n="连续">连续</div>
+      <div class="stats-col">
+        <h3 class="section-title" data-i18n="本周统计">本周统计</h3>
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-value" id="pgStatTotal">0 min</div>
+            <div class="stat-label" data-i18n="总阅读">总阅读</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="pgStatSessions">0 <small data-i18n="次">次</small></div>
+            <div class="stat-label" data-i18n="完成">完成</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="pgStatAvg">0 min</div>
+            <div class="stat-label" data-i18n="平均">平均</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="pgStatStreak">0 <small data-i18n="天">天</small></div>
+            <div class="stat-label" data-i18n="连续">连续</div>
+          </div>
         </div>
       </div>
-
-      <h3 class="section-title" data-i18n="阅读记录" style="margin-top:16px">阅读记录</h3>
-      <div class="history-list" id="historyList"></div>
-      <button class="btn-clear" id="pgClearHistoryBtn" data-i18n="清除记录">清除记录</button>
+      <div class="stats-col">
+        <h3 class="section-title" data-i18n="阅读记录">阅读记录</h3>
+        <div class="history-list" id="historyList"></div>
+        <button class="btn-clear" id="pgClearHistoryBtn" data-i18n="清除记录">清除记录</button>
+      </div>
     </div>
 
     <div class="footer-deco" data-i18n="🐾 读书喵 · 和猫猫一起坚持阅读">🐾 读书喵 · 和猫猫一起坚持阅读</div>
@@ -490,6 +468,7 @@
   </div>
 
   <script src="i18n.js"></script>
+  <script src="utils.js"></script>
   <script src="stats.js"></script>
   <script src="timer.js"></script>
 </body>
