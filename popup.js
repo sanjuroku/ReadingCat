@@ -98,6 +98,14 @@ function injectGradients() {
   svg.insertBefore(defs, svg.firstChild);
 }
 
+// ------ 安全工具 ------
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
 // ------ 格式化 ------
 
 function fmtTime(totalSec) {
@@ -166,10 +174,10 @@ function renderTimer(data) {
 
 function renderSitesStrip(sites) {
   if (sites.length === 0) {
-    sitesStrip.innerHTML = `<span class="empty-msg">${t('📚 离线阅读模式（屏蔽所有网站）')}</span>`;
+    sitesStrip.innerHTML = `<span class="empty-msg">${esc(t('📚 离线阅读模式（屏蔽所有网站）'))}</span>`;
   } else {
     sitesStrip.innerHTML = sites.map(s =>
-      `<span class="site-chip">🌐 ${s}</span>`
+      `<span class="site-chip">🌐 ${esc(s)}</span>`
     ).join('');
   }
 }
@@ -265,7 +273,7 @@ function renderSitesEdit() {
     return;
   }
   container.innerHTML = currentSites.map((s, i) =>
-    `<span class="site-tag">🌐 ${s}<button class="remove" data-idx="${i}">✕</button></span>`
+    `<span class="site-tag">🌐 ${esc(s)}<button class="remove" data-idx="${i}">✕</button></span>`
   ).join('');
 
   container.querySelectorAll('.remove').forEach(btn => {

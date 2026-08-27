@@ -125,15 +125,24 @@ async function tick() {
     chrome.action.setBadgeText({ text: '✓' });
     chrome.action.setBadgeBackgroundColor({ color: '#059669' });
 
-    // 发送系统通知
+    // 发送系统通知（根据语言设置）
     const targetMin = Math.round(session.targetSeconds / 60);
-    chrome.notifications.create('session-complete', {
-      type: 'basic',
-      iconUrl: 'icons/icon128.png',
-      title: '🎉 读书喵：阅读完成！',
-      message: `太棒了！你完成了 ${targetMin} 分钟的阅读目标，现在可以自由浏览了～`,
-      priority: 2
-    });
+    const notifId = 'session-complete-' + Date.now();
+    try {
+      const langData = await chrome.storage.local.get('lang');
+      const lang = langData.lang || 'auto';
+      const isZH = lang === 'zh' || (lang === 'auto' && chrome.i18n.getUILanguage().startsWith('zh'));
+
+      chrome.notifications.create(notifId, {
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: isZH ? '🎉 读书喵：阅读完成！' : '🎉 Reading Cat: Complete!',
+        message: isZH
+          ? `太棒了！你完成了 ${targetMin} 分钟的阅读目标，现在可以自由浏览了～`
+          : `Great job! You completed your ${targetMin}-minute reading goal. Free to browse now!`,
+        priority: 2
+      });
+    } catch (e) { console.warn('通知发送失败:', e); }
   }
 
   await saveSession(session);

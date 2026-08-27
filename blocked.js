@@ -89,3 +89,18 @@ function updateStatus() {
 
 updateStatus();
 setInterval(updateStatus, 1000);
+
+// 实时监听主题 + 语言变更
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.theme) {
+    const theme = changes.theme.newValue || 'auto';
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+  }
+  if (changes.lang) {
+    if (typeof setLang === 'function') setLang(changes.lang.newValue || 'auto');
+    if (typeof reTranslatePage === 'function') reTranslatePage();
+  }
+});
