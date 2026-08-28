@@ -107,6 +107,11 @@ const _EN = {
   '点击扩展图标可以暂停或调整时间': 'Click extension icon to pause or adjust',
   '🐾 读书喵 · 和猫猫一起坚持阅读': '🐾 Reading Cat · Read with your cat',
 
+  // -- 页面标题 --
+  '读书喵': 'Reading Cat',
+  '📖 先完成阅读喵～': '📖 Go read first~',
+  '📖 读书喵 · 专注阅读中': '📖 Reading Cat · Focus Reading',
+
   // -- 通知 --
   '阅读完成！': 'Reading complete!',
 
@@ -149,6 +154,9 @@ function t(zh, ...args) {
  * 自动翻译页面中带 data-i18n 属性的元素
  */
 function initI18n() {
+  // 始终更新页面标题和 lang 属性
+  updatePageMeta();
+
   if (_IS_ZH) return;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.dataset.i18n || el.textContent.trim();
@@ -186,4 +194,21 @@ function reTranslatePage() {
     if (!key) return;
     el.title = _IS_ZH ? key : (_EN[key] || key);
   });
+
+  // 更新页面标题和 lang 属性
+  updatePageMeta();
+}
+
+/**
+ * 更新页面标题和 html lang 属性
+ */
+function updatePageMeta() {
+  // 更新 html lang 属性
+  document.documentElement.lang = _IS_ZH ? 'zh-CN' : 'en';
+
+  // 更新 <title>（若有 data-i18n-title-page）
+  const titleKey = document.documentElement.dataset.i18nTitle;
+  if (titleKey) {
+    document.title = _IS_ZH ? titleKey : (_EN[titleKey] || titleKey);
+  }
 }

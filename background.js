@@ -383,4 +383,4 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 })();
 
-console.log('读书喵 v2.1 已启动 🐱');
+console.log('Reading Cat v2.2 started 🐱');

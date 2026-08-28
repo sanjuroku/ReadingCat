@@ -136,5 +136,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.lang) {
     if (typeof setLang === 'function') setLang(changes.lang.newValue || 'auto');
     if (typeof reTranslatePage === 'function') reTranslatePage();
+    if (typeof updatePageMeta === 'function') updatePageMeta();
   }
 });
