@@ -14,40 +14,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Get version from tag
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Build extension ZIP
-        run: |
-          zip -r "readingcat-${{ steps.version.outputs.version }}.zip" \
-            manifest.json \
-            background.js \
-            popup.html popup.css popup.js \
-            blocked.html blocked.js \
-            timer.html timer.js \
-            i18n.js utils.js stats.js \
-            theme.css \
-            icons/ \
-            _locales/ \
-            -x "*.DS_Store"
+      - name: Build Chrome & Firefox packages
+        run: bash build.sh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           draft: false
           generate_release_notes: true
-          files: readingcat-${{ steps.version.outputs.version }}.zip
+          files: |
+            dist/readingcat-${{ steps.version.outputs.version }}-chrome.zip
+            dist/readingcat-${{ steps.version.outputs.version }}-firefox.zip
           body: |
             ## 安装方法 | Installation
 
             ### Chrome / Edge / Brave / Arc
-            1. 下载下方 `readingcat-${{ steps.version.outputs.version }}.zip` 并解压
+            1. 下载下方 `readingcat-${{ steps.version.outputs.version }}-chrome.zip` 并解压
             2. 打开 `chrome://extensions/`，开启 **开发者模式**
             3. 点击 **加载已解压的扩展程序**，选择解压后的文件夹
 
             ### Firefox (109+)
-            1. 下载下方 `readingcat-${{ steps.version.outputs.version }}.zip` 并解压
+            1. 下载下方 `readingcat-${{ steps.version.outputs.version }}-firefox.zip` 并解压
             2. 打开 `about:debugging#/runtime/this-firefox`
             3. 点击 **临时载入附加组件**，选择文件夹中的 `manifest.json`
 
