@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.2.0 (2026-08-28)
+
+### ✨ New Features
+- **Firefox 兼容**: 支持 Firefox 109+ 浏览器，manifest 添加 `browser_specific_settings` 和 `background.scripts`
+- **README 更新**: 新增 Firefox 安装说明
+
 ## v2.1.1 (2026-08-28)
 
 ### 🔒 Security

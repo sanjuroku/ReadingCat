@@ -56,7 +56,7 @@ function applyLang(lang) {
   document.querySelectorAll('#langSwitcher .theme-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.lang === lang);
   });
-  // 重新翻译页面
+  // 重新翻译页面（含标题和 lang 属性）
   if (typeof reTranslatePage === 'function') reTranslatePage();
 }
 
