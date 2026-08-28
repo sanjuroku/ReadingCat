@@ -42,6 +42,16 @@ Or click **Code → Download ZIP** at the top right of this page.
 4. 选择本项目文件夹
 5. ✅ 工具栏出现 🐱 图标即安装成功
 
+### 安装到 Firefox | Load into Firefox
+
+1. 打开 `about:debugging#/runtime/this-firefox`
+2. 点击 **临时载入附加组件 | Load Temporary Add-on**
+3. 选择本项目文件夹中的 `manifest.json`
+4. ✅ 工具栏出现 🐱 图标即安装成功
+
+> ⚠️ 临时加载的扩展在 Firefox 重启后会消失。如需永久安装，请通过 [AMO](https://addons.mozilla.org/) 发布或使用 Firefox Developer Edition 的 `xpinstall.signatures.required = false` 设置。  
+> ⚠️ Temporarily loaded extensions are removed when Firefox restarts. For permanent installation, publish via [AMO](https://addons.mozilla.org/) or use Firefox Developer Edition with `xpinstall.signatures.required = false`.
+
 > 💡 也支持 Edge、Brave、Arc 等所有 Chromium 浏览器，安装方式相同。  
 > 💡 Also works with Edge, Brave, Arc, and any Chromium-based browser.
 
@@ -135,8 +145,8 @@ Likely a cache issue. Remove and re-add the extension at `chrome://extensions/`.
 <details>
 <summary><b>支持其他浏览器吗？| Other browsers?</b></summary>
 
-支持所有 Chromium 内核浏览器：Edge、Brave、Arc、Vivaldi 等。  
-Works on any Chromium-based browser: Edge, Brave, Arc, Vivaldi, etc.
+支持所有 Chromium 内核浏览器：Edge、Brave、Arc、Vivaldi 等，以及 Firefox（109+）。  
+Works on any Chromium-based browser: Edge, Brave, Arc, Vivaldi, etc., and Firefox (109+).
 
 </details>
 
