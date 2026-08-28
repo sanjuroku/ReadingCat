@@ -6,7 +6,13 @@
 
 set -euo pipefail
 
-VERSION=$(grep '"version"' manifest.json | head -1 | sed 's/.*: *"\(.*\)".*/\1/')
+# In CI, derive version from the git tag (GITHUB_REF_NAME) so the zip
+# filenames always match the tag.  Locally, fall back to manifest.json.
+if [[ -n "${GITHUB_REF_NAME:-}" && "${GITHUB_REF_NAME:-}" == v* ]]; then
+  VERSION="${GITHUB_REF_NAME#v}"
+else
+  VERSION=$(grep '"version"' manifest.json | head -1 | sed 's/.*: *"\(.*\)".*/\1/')
+fi
 DIST="dist"
 
 # 扩展源文件列表
